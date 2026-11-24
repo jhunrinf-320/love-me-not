@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#080c3a">
+  <title>Loves Me, Loves Me Not — Pixel Flower Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="site-heading">
+      <p class="eyebrow">A TINY PIXEL-ART LOVE STORY</p>
+      <h1>Loves Me, Loves Me Not</h1>
+      <p class="hint">A little flower, a little hope, and twelve petals.</p>
+    </header>
+
+    <section class="game-shell" aria-label="Loves me, loves me not game">
+      <canvas id="game" width="180" height="240"
+        aria-label="Pixel flower game. Tap Start Game, then tap a flower petal."></canvas>
+      <div class="toolbar">
+        <button id="soundButton" type="button" aria-pressed="false">♪ Sound: ON</button>
+        <button id="fullscreenButton" type="button">⛶ Fullscreen</button>
+      </div>
+    </section>
+
+    <p class="instructions">Tap or click a petal to pick it. Your final petal reveals the ending.</p>
+    <footer>Made with little pixels and a little bit of courage ♡</footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
