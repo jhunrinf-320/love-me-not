@@ -71,47 +71,74 @@
     ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
     text(label, x + w / 2, y + h / 2, "#fff4fa", 8);
   }
-  function background() {
+  // Build the expensive gradient, hills, and grass once instead of redrawing
+  // tens of thousands of individual pixels on every animation frame.
+  const staticBackground = document.createElement("canvas");
+  staticBackground.width = W;
+  staticBackground.height = H;
+  const bgCtx = staticBackground.getContext("2d");
+
+  function buildStaticBackground() {
+    const bayer = [
+      [0,8,2,10], [12,4,14,6],
+      [3,11,1,9], [15,7,13,5]
+    ];
     for (let y = 0; y < H; y++) {
       const t = Math.min(1, y / (H * .8));
       const bands = 7, v = t * bands, band = Math.floor(v);
       const frac = v - band;
       for (let x = 0; x < W; x++) {
-        const threshold = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]][y % 4][x % 4] / 16;
+        const threshold = bayer[y % 4][x % 4] / 16;
         const step = Math.min(bands, band + (frac > threshold ? 1 : 0));
-        ctx.fillStyle = rgb(topSky, bottomSky, step / bands);
-        ctx.fillRect(x, y, 1, 1);
+        bgCtx.fillStyle = rgb(topSky, bottomSky, step / bands);
+        bgCtx.fillRect(x, y, 1, 1);
       }
     }
 
     for (let x = 0; x < W; x++) {
       const y1 = Math.floor(172 + 9 * Math.sin(x * .035) + 5 * Math.sin(x * .09 + 1));
       const y2 = Math.floor(190 + 4 * Math.sin(x * .06 + 2));
-      ctx.fillStyle = "#1c266e"; ctx.fillRect(x, y1, 1, H - y1);
-      ctx.fillStyle = "#144632"; ctx.fillRect(x, y2, 1, H - y2);
+      bgCtx.fillStyle = "#1c266e"; bgCtx.fillRect(x, y1, 1, H - y1);
+      bgCtx.fillStyle = "#144632"; bgCtx.fillRect(x, y2, 1, H - y2);
     }
-    ctx.fillStyle = "#1e5a28"; ctx.fillRect(0, 200, W, 40);
+    bgCtx.fillStyle = "#1e5a28";
+    bgCtx.fillRect(0, 200, W, 40);
+
+    // Grass is static too, so bake it into the cached background.
+    grass.forEach(g => {
+      bgCtx.strokeStyle = g.color;
+      bgCtx.beginPath();
+      bgCtx.moveTo(g.x, g.y);
+      bgCtx.lineTo(g.x - 1, g.y - g.h);
+      bgCtx.stroke();
+    });
+  }
+
+  buildStaticBackground();
+
+  function background() {
+    // One small bitmap blit per frame replaces the old per-pixel redraw.
+    ctx.drawImage(staticBackground, 0, 0);
 
     stars.forEach(s => {
       const glow = .45 + .55 * (.5 + .5 * Math.sin(time * 2 + s.phase));
+      if (glow <= .63) return;
       ctx.fillStyle = `rgb(${Math.floor(110 + 100 * glow)},${Math.floor(120 + 100 * glow)},${Math.floor(190 + 65 * glow)})`;
-      if (glow > .63) ctx.fillRect(Math.floor(s.x), Math.floor(s.y), s.size, s.size);
+      const x = Math.floor(s.x), y = Math.floor(s.y);
+      ctx.fillRect(x, y, s.size, s.size);
       if (glow > .88) {
-        ctx.fillRect(Math.floor(s.x) - 1, Math.floor(s.y), 1, 1);
-        ctx.fillRect(Math.floor(s.x) + 1, Math.floor(s.y), 1, 1);
-        ctx.fillRect(Math.floor(s.x), Math.floor(s.y) - 1, 1, 1);
-        ctx.fillRect(Math.floor(s.x), Math.floor(s.y) + 1, 1, 1);
+        ctx.fillRect(x - 1, y, 1, 1);
+        ctx.fillRect(x + 1, y, 1, 1);
+        ctx.fillRect(x, y - 1, 1, 1);
+        ctx.fillRect(x, y + 1, 1, 1);
       }
     });
+
     fireflies.forEach(f => {
       if (Math.sin(time * 2.8 + f.phase) > .05) {
         ctx.fillStyle = "#aadc69";
-        ctx.fillRect(Math.floor(f.x), Math.floor(f.y), 2, 2);
+        ctx.fillRect(f.x | 0, f.y | 0, 2, 2);
       }
-    });
-    grass.forEach(g => {
-      ctx.strokeStyle = g.color;
-      ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x - 1, g.y - g.h); ctx.stroke();
     });
   }
 
@@ -353,12 +380,22 @@
 
   let previous = performance.now();
   function frame(now) {
-    const dt = Math.min((now - previous) / 1000, .05);
+    // Skip expensive drawing while the tab is hidden, and reset the clock
+    // when it becomes visible so animations do not jump forward.
+    if (document.hidden) {
+      previous = now;
+      requestAnimationFrame(frame);
+      return;
+    }
+    const dt = Math.min((now - previous) / 1000, .033);
     previous = now;
     time += dt;
     update(dt);
     render();
     requestAnimationFrame(frame);
   }
+  document.addEventListener("visibilitychange", () => {
+    previous = performance.now();
+  });
   requestAnimationFrame(frame);
 })();

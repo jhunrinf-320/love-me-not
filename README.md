@@ -20,3 +20,10 @@ Open `index.html` in a modern browser.
 - `M` toggles sound, `R` replays, `F11` toggles fullscreen, `Esc` returns to title.
 
 No external images, fonts, or audio files are required.
+
+
+## Performance update
+The background gradient, hills, and meadow grass are now pre-rendered once
+to an offscreen canvas. Each frame only blits that cached image and draws the
+small animated stars/fireflies and game objects. Animation is also paused
+while the browser tab is hidden.
